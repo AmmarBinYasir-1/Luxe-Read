@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuxeRead — Transform PDFs into Elegant eBooks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Lato:ital,wght@0,300;0,400;1,300&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root {
+  --night: #0D0C0A;
+  --night2: #141210;
+  --night3: #1C1916;
+  --night4: #252118;
+  --night5: #2E2A20;
+  --gold: #C8A55A;
+  --gold2: #E2C07A;
+  --gold3: #F5DFA0;
+  --gold-dim: #8C6F30;
+  --ivory: #F7F2E8;
+  --ivory2: #EDE7D8;
+  --ivory3: #D8CFBA;
+  --smoke: #9A9080;
+  --smoke2: #6A6050;
+  --bg: var(--night);
+  --bg2: var(--night2);
+  --bg3: var(--night3);
+  --surface: var(--night4);
+  --text: var(--ivory);
+  --text2: var(--ivory2);
+  --text3: var(--ivory3);
+  --muted: var(--smoke);
+  --muted2: var(--smoke2);
+  --border: rgba(200,165,90,0.12);
+  --border2: rgba(200,165,90,0.25);
+  --border3: rgba(200,165,90,0.45);
+  --shadow: 0 8px 48px rgba(0,0,0,0.6);
+  --shadow2: 0 24px 96px rgba(0,0,0,0.8);
+  --r: 14px;
+  --r2: 22px;
+  --fp: 'Playfair Display', Georgia, serif;
+  --fb: 'Libre Baskerville', Georgia, serif;
+  --fs: 'Lato', sans-serif;
+  --reading-size: 19px;
+}
+[data-light] {
+  --bg: #F9F5EE;
+  --bg2: #F4EFE5;
+  --bg3: #EDE7D8;
+  --surface: #E8E1CF;
+  --text: #1A1610;
+  --text2: #2C2618;
+  --text3: #3E3828;
+  --muted: #7A7060;
+  --muted2: #5A5040;
+  --border: rgba(100,80,30,0.12);
+  --border2: rgba(100,80,30,0.22);
+  --border3: rgba(100,80,30,0.4);
+  --shadow: 0 8px 48px rgba(0,0,0,0.1);
+  --shadow2: 0 24px 96px rgba(0,0,0,0.15);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--fs);background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden;transition:background .5s,color .5s;cursor:none}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");pointer-events:none;z-index:1;opacity:1}
+::selection{background:rgba(200,165,90,0.25);color:var(--text)}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* CURSOR */
+#cur{position:fixed;width:10px;height:10px;background:var(--gold);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s;mix-blend-mode:screen}
+#cring{position:fixed;width:36px;height:36px;border:1px solid rgba(200,165,90,0.4);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%)}
+
+/* NAV */
+nav#tnav{position:fixed;top:0;left:0;right:0;z-index:500;display:flex;align-items:center;justify-content:space-between;padding:0 56px;height:64px;background:rgba(13,12,10,0.78);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--border);transition:background .4s}
+[data-light] nav#tnav{background:rgba(249,245,238,0.85)}
+.logo{font-family:var(--fp);font-size:20px;font-style:italic;color:var(--gold);letter-spacing:.03em;text-decoration:none;display:flex;align-items:center;gap:6px;cursor:none}
+.logo-gem{width:7px;height:7px;background:var(--gold);transform:rotate(45deg);margin-bottom:1px;transition:transform .4s}
+.logo:hover .logo-gem{transform:rotate(225deg)}
+.nav-r{display:flex;align-items:center;gap:10px}
+.pbtn{font-family:var(--fs);font-size:11px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:none;border:none;cursor:none;padding:8px 16px;border-radius:40px;transition:color .25s,background .25s}
+.pbtn:hover{color:var(--text);background:var(--border)}
+.ibtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--border2);background:none;cursor:none;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px;transition:all .25s}
+.ibtn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* HERO */
+#landing{min-height:100vh;display:flex;flex-direction:column;position:relative;overflow:hidden}
+#landing::before{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 80px,rgba(200,165,90,.025) 80px,rgba(200,165,90,.025) 81px);pointer-events:none}
+.hcircle{position:absolute;width:700px;height:700px;border-radius:50%;border:1px solid rgba(200,165,90,.06);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.hcircle::before{content:'';position:absolute;inset:60px;border-radius:50%;border:1px solid rgba(200,165,90,.04)}
+.hcircle::after{content:'';position:absolute;inset:130px;border-radius:50%;border:1px solid rgba(200,165,90,.03)}
+.hglow{position:absolute;width:900px;height:500px;background:radial-gradient(ellipse,rgba(200,165,90,.055) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-60%);pointer-events:none}
+.hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:140px 24px 60px;text-align:center;position:relative;z-index:2}
+.htag{display:inline-flex;align-items:center;gap:10px;font-family:var(--fs);font-size:10px;font-weight:400;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:36px;padding:9px 24px;border:1px solid var(--border2);border-radius:40px;background:rgba(200,165,90,.05);animation:fadeUp 1s ease .1s both}
+.htag-dot{width:4px;height:4px;background:var(--gold);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)}}
+h1.hh1{font-family:var(--fp);font-size:clamp(54px,9vw,110px);font-weight:400;line-height:.96;color:var(--text);letter-spacing:-.02em;margin-bottom:6px;animation:fadeUp 1s ease .25s both}
+h1.hh1 em{font-style:italic;color:var(--gold);display:block}
+h1.hh1 .thin{font-weight:300;color:var(--muted);font-size:.82em;letter-spacing:.02em}
+.hsub{font-family:var(--fb);font-size:clamp(14px,1.7vw,18px);font-style:italic;color:var(--muted);max-width:480px;line-height:1.75;margin-bottom:52px;animation:fadeUp 1s ease .4s both}
+.hbtns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;animation:fadeUp 1s ease .55s both}
+
+.btn-gold{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--gold),var(--gold-dim));color:var(--night);border:none;padding:16px 42px;border-radius:50px;font-family:var(--fs);font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;cursor:none;transition:all .35s;box-shadow:0 4px 32px rgba(200,165,90,.22);position:relative;overflow:hidden}
+.btn-gold::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--gold3),var(--gold2));opacity:0;transition:opacity .35s}
+.btn-gold:hover{transform:translateY(-3px);box-shadow:0 12px 48px rgba(200,165,90,.38)}
+.btn-gold:hover::before{opacity:1}
+.btn-gold>*{position:relative;z-index:1}
+.btn-outline{display:inline-flex;align-items:center;gap:10px;background:transparent;color:var(--text2);border:1px solid var(--border2);padding:15px 36px;border-radius:50px;font-family:var(--fs);font-size:12px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;cursor:none;transition:all .3s}
+.btn-outline:hover{border-color:var(--border3);color:var(--gold);transform:translateY(-3px)}
+
+.badges{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:36px 24px 0;animation:fadeUp 1s ease .7s both;position:relative;z-index:2}
+.badge{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted2);padding:5px 14px;border:1px solid var(--border);border-radius:40px;transition:all .25s}
+.badge:hover{border-color:var(--border2);color:var(--muted)}
+
+/* UPLOAD */
+.uwrap{padding:44px 24px 100px;display:flex;justify-content:center;position:relative;z-index:2;animation:fadeUp 1s ease .85s both}
+.ucard{width:100%;max-width:720px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:4px;box-shadow:var(--shadow);position:relative}
+.ucard::before{content:'';position:absolute;inset:-1px;border-radius:calc(var(--r2) + 1px);background:linear-gradient(135deg,rgba(200,165,90,.18) 0%,transparent 50%,rgba(200,165,90,.07) 100%);pointer-events:none}
+.uinner{border:1.5px dashed var(--border2);border-radius:calc(var(--r2) - 2px);padding:60px 40px;text-align:center;cursor:none;transition:all .3s;position:relative}
+.uinner:hover,.uinner.drag{border-color:var(--gold);background:rgba(200,165,90,.04)}
+.uicon{width:72px;height:72px;margin:0 auto 24px;border-radius:20px;background:linear-gradient(135deg,rgba(200,165,90,.15),rgba(200,165,90,.05));border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;transition:all .3s}
+.uinner:hover .uicon{transform:scale(1.06);border-color:var(--border3);background:linear-gradient(135deg,rgba(200,165,90,.25),rgba(200,165,90,.1))}
+.uicon svg{width:30px;height:30px;stroke:var(--gold);fill:none;stroke-width:1.5}
+.uh{font-family:var(--fp);font-size:24px;font-weight:400;color:var(--text);margin-bottom:10px}
+.up{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.65}
+.utags{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.utag{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);background:rgba(200,165,90,.1);padding:5px 14px;border-radius:40px;border:1px solid var(--border2)}
+input[type=file]{display:none}
+
+/* PROCESSING */
+#processing{display:none;min-height:100vh;align-items:center;justify-content:center;padding:40px 24px}
+.pcard{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:72px 56px;max-width:540px;width:100%;text-align:center;box-shadow:var(--shadow2);position:relative}
+.pcard::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:220px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.orbital{width:80px;height:80px;margin:0 auto 36px;position:relative}
+.orbital::before,.orbital::after{content:'';position:absolute;border-radius:50%}
+.orbital::before{inset:0;border:1px solid var(--border);border-top-color:var(--gold);animation:spin 1.2s linear infinite}
+.orbital::after{inset:16px;border:1px solid var(--border);border-bottom-color:var(--gold2);animation:spin .8s linear infinite reverse}
+.orbital-dot{position:absolute;width:8px;height:8px;background:var(--gold);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 12px var(--gold)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ph{font-family:var(--fp);font-size:30px;font-weight:400;margin-bottom:10px;color:var(--text)}
+.psub{font-size:13px;color:var(--muted);margin-bottom:36px;font-style:italic}
+.ptrack{width:100%;height:2px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:16px}
+.pfill{height:100%;background:linear-gradient(90deg,var(--gold-dim),var(--gold),var(--gold2));border-radius:2px;width:0;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.pstep-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2)}
+.steps-list{margin-top:32px;text-align:left;display:flex;flex-direction:column;gap:8px}
+.srow{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted2);letter-spacing:.04em;padding:10px 14px;border-radius:10px;transition:all .3s}
+.srow.done{color:var(--text2);background:rgba(200,165,90,.07)}
+.srow.active{color:var(--gold);background:rgba(200,165,90,.1)}
+.sicon{width:20px;height:20px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;transition:all .3s}
+.srow.done .sicon{background:var(--gold);border-color:var(--gold);color:var(--night)}
+.srow.active .sicon{border-color:var(--gold);color:var(--gold);animation:pulse 1.2s infinite}
+
+/* READER */
+#reader{display:none;min-height:100vh;flex-direction:column}
+.rpbar{position:fixed;top:64px;left:0;height:2px;background:linear-gradient(90deg,var(--gold-dim),var(--gold));z-index:400;width:0;transition:width .08s linear;box-shadow:0 0 8px rgba(200,165,90,.4)}
+
+/* READER NAV */
+.rnav{position:fixed;top:0;left:0;right:0;z-index:450;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:rgba(13,12,10,.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--border)}
+[data-light] .rnav{background:rgba(249,245,238,.9)}
+.rnav-l{display:flex;align-items:center;gap:14px}
+.rnav-title{font-family:var(--fp);font-size:15px;font-style:italic;color:var(--text2);max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rnav-r{display:flex;align-items:center;gap:8px}
+.rbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:transparent;cursor:none;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .25s}
+.rbtn:hover{border-color:var(--border2);color:var(--text);background:var(--bg3)}
+.rbtn.lit{background:rgba(200,165,90,.15);border-color:var(--border3);color:var(--gold)}
+
+/* LAYOUT */
+.rlayout{display:flex;margin-top:66px;min-height:calc(100vh - 66px)}
+
+/* SIDEBAR */
+.rsidebar{width:300px;min-width:300px;height:calc(100vh - 66px);position:sticky;top:66px;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);padding:32px 0;transition:all .4s cubic-bezier(.4,0,.2,1)}
+.rsidebar.hide{width:0;min-width:0;padding:0;overflow:hidden}
+.sbsec{padding:0 28px;margin-bottom:36px}
+.sblabel{font-size:9px;font-weight:400;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.sblabel::after{content:'';flex:1;height:1px;background:var(--border)}
+.tocbtn{display:block;width:100%;text-align:left;border:none;background:none;cursor:none;padding:10px 14px;border-radius:10px;font-family:var(--fs);font-size:13px;color:var(--muted);transition:all .25s;margin-bottom:2px;border-left:2px solid transparent}
+.tocbtn:hover{background:var(--border);color:var(--text2)}
+.tocbtn.on{border-left-color:var(--gold);background:rgba(200,165,90,.08);color:var(--gold)}
+
+/* MAIN */
+.rmain{flex:1;overflow-y:auto;padding:80px clamp(28px,8vw,120px);max-width:960px;width:100%;margin:0 auto}
+
+/* BOOK HEADER */
+.bhdr{text-align:center;margin-bottom:96px;padding-bottom:64px;position:relative}
+.bhdr::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:220px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.bhdreye{font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:24px}
+.bhdrtitle{font-family:var(--fp);font-size:clamp(36px,5.5vw,64px);font-weight:400;line-height:1.08;color:var(--text);margin-bottom:20px}
+.bhdrmeta{font-size:13px;color:var(--muted2);letter-spacing:.06em;display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap}
+.msep{width:3px;height:3px;background:var(--gold);border-radius:50%;opacity:.5}
+
+/* CHAPTER */
+.ch{margin-bottom:96px;scroll-margin-top:96px}
+.chnum{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.chnum::after{content:'';width:40px;height:1px;background:var(--border2)}
+.chtitle{font-family:var(--fp);font-size:clamp(26px,3.8vw,44px);font-weight:400;line-height:1.15;color:var(--text);margin-bottom:40px}
+.chbody{font-family:var(--fb);font-size:var(--reading-size);line-height:1.88;color:var(--text3);font-weight:400}
+[data-light] .chbody{color:var(--text2)}
+.chbody p{margin-bottom:1.8em}
+.chbody p:first-of-type::first-letter{font-family:var(--fp);font-size:5em;font-weight:400;float:left;line-height:.75;margin:10px 6px -4px -2px;color:var(--gold)}
+.chdiv{text-align:center;margin:60px 0 72px;color:var(--gold-dim);letter-spacing:.5em;font-size:11px;opacity:.55}
+
+/* SUMMARY DRAWER */
+.sumdr{position:fixed;right:0;top:66px;width:380px;height:calc(100vh - 66px);background:var(--bg2);border-left:1px solid var(--border);padding:36px 32px;overflow-y:auto;transform:translateX(110%);transition:transform .45s cubic-bezier(.4,0,.2,1);z-index:200}
+.sumdr.open{transform:translateX(0)}
+.sumdr::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.sumtitle{font-family:var(--fp);font-size:26px;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border);color:var(--text)}
+.sumsec{margin-bottom:32px}
+.sumlabel{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+.sumbody{font-family:var(--fb);font-size:14px;line-height:1.8;color:var(--muted);font-style:italic}
+.kp{display:flex;gap:12px;padding:13px 15px;background:rgba(200,165,90,.06);border-left:2px solid var(--gold);border-radius:0 10px 10px 0;margin-bottom:9px;font-family:var(--fb);font-size:13px;line-height:1.65;color:var(--text3)}
+[data-light] .kp{color:var(--text2)}
+
+/* FONT CTRL */
+.fctrl{position:fixed;bottom:28px;right:28px;display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border2);border-radius:50px;padding:6px 10px;gap:2px;box-shadow:var(--shadow);z-index:300;backdrop-filter:blur(16px);transition:opacity .3s}
+.fcbtn{width:34px;height:34px;border-radius:50%;border:none;background:none;cursor:none;display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--fp);transition:all .2s}
+.fcbtn:hover{color:var(--gold);background:rgba(200,165,90,.1)}
+.fclabel{font-size:11px;color:var(--muted2);padding:0 10px;min-width:48px;text-align:center;letter-spacing:.04em}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--surface);color:var(--text2);border:1px solid var(--border2);padding:12px 28px;border-radius:50px;font-size:13px;letter-spacing:.04em;z-index:9000;transition:transform .35s cubic-bezier(.4,0,.2,1);pointer-events:none;white-space:nowrap}
+.toast.in{transform:translateX(-50%) translateY(0)}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  nav#tnav{padding:0 20px}
+  h1.hh1{font-size:clamp(44px,12vw,72px)}
+  .rsidebar{position:fixed;left:0;z-index:300;transform:translateX(-110%);box-shadow:var(--shadow2)}
+  .rsidebar.mshow{transform:translateX(0)}
+  .rsidebar.hide{transform:translateX(-110%)}
+  .rmain{padding:60px 24px}
+  .sumdr{width:100%}
+  .uinner{padding:44px 24px}
+}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="cring"></div>
+
+<!-- ══ LANDING ══ -->
+<div id="landing">
+  <nav id="tnav">
+    <a class="logo" href="#" onclick="return false">
+      <div class="logo-gem"></div>LuxeRead
+    </a>
+    <div class="nav-r">
+      <button class="pbtn" onclick="showDemo()">View Demo</button>
+      <button class="ibtn" onclick="toggleTheme()" title="Switch theme">◐</button>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hcircle"></div>
+    <div class="hglow"></div>
+    <div class="htag"><div class="htag-dot"></div>Free · No sign-up · Instant · Private</div>
+    <h1 class="hh1">
+      <span class="thin">Every PDF</span>
+      <em>Deserves</em>
+      <span class="thin">to be Beautiful</span>
+    </h1>
+    <p class="hsub">Drop your document. Watch it transform into an elegant, immersive reading experience — entirely in your browser.</p>
+    <div class="hbtns">
+      <button class="btn-gold" onclick="document.getElementById('fIn').click()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Upload PDF — Free</span>
+      </button>
+      <button class="btn-outline" onclick="showDemo()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        View Demo
+      </button>
+    </div>
+  </section>
+
+  <div class="badges">
+    <div class="badge">AI Chapter Detection</div>
+    <div class="badge">Smart Summaries</div>
+    <div class="badge">Dark &amp; Light Mode</div>
+    <div class="badge">Bookmark System</div>
+    <div class="badge">Focus Mode</div>
+    <div class="badge">Font Control</div>
+    <div class="badge">Reading Progress</div>
+    <div class="badge">100% Free</div>
+    <div class="badge">No Account</div>
+    <div class="badge">Files Stay on Device</div>
+  </div>
+
+  <div class="uwrap">
+    <div class="ucard">
+      <div class="uinner" id="uZone">
+        <div class="uicon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <div class="uh">Drop your PDF here</div>
+        <p class="up">Drag &amp; drop or click to browse<br>Processed entirely in your browser · Your files never leave your device</p>
+        <div class="utags">
+          <span class="utag">PDF</span>
+          <span class="utag">Up to 50 MB</span>
+          <span class="utag">Secure &amp; Private</span>
+        </div>
+      </div>
+      <input type="file" id="fIn" accept=".pdf">
+    </div>
+  </div>
+</div>
+
+<!-- ══ PROCESSING ══ -->
+<div id="processing">
+  <div class="pcard">
+    <div class="orbital"><div class="orbital-dot"></div></div>
+    <div class="ph">Crafting your eBook</div>
+    <div class="psub" id="pSub">Preparing document…</div>
+    <div class="ptrack"><div class="pfill" id="pFill"></div></div>
+    <div class="pstep-label" id="pStep">Initialising</div>
+    <div class="steps-list">
+      <div class="srow" id="s0"><div class="sicon">1</div>Extracting text from PDF</div>
+      <div class="srow" id="s1"><div class="sicon">2</div>Detecting chapters &amp; structure</div>
+      <div class="srow" id="s2"><div class="sicon">3</div>Generating summaries &amp; insights</div>
+      <div class="srow" id="s3"><div class="sicon">4</div>Applying premium typography</div>
+      <div class="srow" id="s4"><div class="sicon">5</div>Finalising your eBook</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ READER ══ -->
+<div id="reader">
+  <div class="rpbar" id="rpbar"></div>
+  <nav class="rnav">
+    <div class="rnav-l">
+      <button class="rbtn" onclick="toggleSidebar()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+      </button>
+      <div class="rnav-title" id="rTitle">—</div>
+    </div>
+    <div class="rnav-r">
+      <button class="rbtn" id="bmBtn" onclick="toggleBookmark()" title="Bookmark (B)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <button class="rbtn" id="sumBtn" onclick="toggleSummary()" title="Insights (S)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <button class="rbtn" id="focBtn" onclick="toggleFocus()" title="Focus mode (F)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+      <button class="rbtn" onclick="toggleTheme()">◐</button>
+      <button class="rbtn" onclick="goHome()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <div class="rlayout">
+    <div class="rsidebar" id="rSb">
+      <div class="sbsec">
+        <div class="sblabel">Contents</div>
+        <div id="tocEl"></div>
+      </div>
+      <div class="sbsec">
+        <div class="sblabel">Bookmarks</div>
+        <div id="bmEl"><div style="font-size:12px;color:var(--muted2);font-style:italic;padding:4px 0">None saved yet</div></div>
+      </div>
+    </div>
+    <div class="rmain" id="rMain" onscroll="onScroll()">
+      <div class="bhdr">
+        <div class="bhdreye">LuxeRead Edition</div>
+        <div class="bhdrtitle" id="bTitle">—</div>
+        <div class="bhdrmeta" id="bMeta"></div>
+      </div>
+      <div id="chsEl"></div>
+    </div>
+  </div>
+
+  <div class="sumdr" id="sumDr">
+    <div class="sumtitle">AI Insights</div>
+    <div id="sumCont"></div>
+  </div>
+
+  <div class="fctrl" id="fCtrl">
+    <button class="fcbtn" onclick="adjFont(-1)" style="font-size:16px;font-style:italic">A</button>
+    <div class="fclabel" id="fLbl">19px</div>
+    <button class="fcbtn" onclick="adjFont(1)" style="font-size:22px;font-style:italic">A</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ── CURSOR ── */
+const cur=document.getElementById('cur'),ring=document.getElementById('cring');
+let rx=0,ry=0,cx=0,cy=0;
+document.addEventListener('mousemove',e=>{cx=e.clientX;cy=e.clientY;cur.style.left=cx+'px';cur.style.top=cy+'px'});
+(function animR(){rx+=(cx-rx)*.18;ry+=(cy-ry)*.18;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animR)})();
+document.addEventListener('mousedown',()=>{cur.style.width='6px';cur.style.height='6px';ring.style.width='44px';ring.style.height='44px'});
+document.addEventListener('mouseup',()=>{cur.style.width='10px';cur.style.height='10px';ring.style.width='36px';ring.style.height='36px'});
+
+/* ── STATE ── */
+let book=null,fontSize=19,bookmarks=JSON.parse(localStorage.getItem('lr_bm')||'[]');
+let dark=true,sbOpen=true,sumOpen=false,focMode=false;
+
+/* ── DRAG DROP ── */
+const uz=document.getElementById('uZone');
+uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('drag')});
+uz.addEventListener('dragleave',()=>uz.classList.remove('drag'));
+uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')runFile(f);else toast('Please drop a PDF file')});
+uz.addEventListener('click',()=>document.getElementById('fIn').click());
+document.getElementById('fIn').addEventListener('change',e=>{if(e.target.files[0])runFile(e.target.files[0])});
+
+/* ── PROCESS ── */
+async function runFile(file){
+  showView('processing');
+  try{
+    stepA(0);setProg(8,'Reading PDF…','Extracting text');
+    const{text,pages}=await extractPDF(file);
+    stepD(0);
+    stepA(1);setProg(28,'Analysing structure…','Detecting chapters');
+    await sl(350);
+    const chapters=detectChapters(text);
+    stepD(1);
+    stepA(2);setProg(52,'Generating insights…','Building summaries');
+    await sl(400);
+    const summary=buildSummary(text,chapters);
+    stepD(2);
+    stepA(3);setProg(75,'Applying typography…','Formatting');
+    await sl(350);
+    stepD(3);
+    stepA(4);setProg(95,'Finalising…','Almost ready');
+    const wc=text.split(/\s+/).filter(Boolean).length;
+    book={title:deriveTitle(text,file.name),pages,words:wc,chapters,summary,readTime:Math.ceil(wc/238)};
+    await sl(500);
+    stepD(4);setProg(100,'Complete!','Opening eBook');
+    await sl(400);
+    renderBook(book);
+  }catch(err){console.error(err);toast('Error: '+err.message);showView('landing')}
+}
+function stepA(i){document.getElementById('s'+i).classList.add('active')}
+function stepD(i){const e=document.getElementById('s'+i);e.classList.remove('active');e.classList.add('done');e.querySelector('.sicon').textContent='✓'}
+function setProg(p,sub,step){document.getElementById('pFill').style.width=p+'%';document.getElementById('pSub').textContent=sub;document.getElementById('pStep').textContent=step}
+
+/* ── PDF EXTRACT ── */
+async function extractPDF(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let out='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const pg=await pdf.getPage(i);
+    const ct=await pg.getTextContent();
+    const items=ct.items;let lastY=null,line='';
+    for(const item of items){
+      if(lastY!==null&&Math.abs(item.transform[5]-lastY)>2){out+=line.trim()+'\n';line=''}
+      line+=item.str+' ';lastY=item.transform[5];
+    }
+    if(line.trim())out+=line.trim()+'\n';
+    out+='\n';
+  }
+  return{text:out.slice(0,120000),pages:pdf.numPages};
+}
+
+/* ── TITLE ── */
+function deriveTitle(text,filename){
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>3&&l.length<120);
+  for(const l of lines.slice(0,8)){if(/^[A-Z]/.test(l)&&!/^(the|a |an |and |or |but )/i.test(l))return l;}
+  return filename.replace(/\.pdf$/i,'').replace(/[-_]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+/* ── CHAPTER DETECT ── */
+function detectChapters(text){
+  const lines=text.split('\n').map(l=>l.trim());
+  const isHead=(l,nx)=>{
+    if(!l||l.length<2||l.length>120)return false;
+    if(/^(chapter|section|part|introduction|conclusion|preface|foreword|epilogue|appendix)\b/i.test(l))return true;
+    if(/^\d+[\.\)]\s+[A-Z]/.test(l))return true;
+    if(/^[IVXLCDM]+\.\s+/.test(l))return true;
+    if(l===l.toUpperCase()&&l.length>4&&l.length<80&&/[A-Z]/.test(l))return true;
+    if(l.length<60&&/^[A-Z]/.test(l)&&nx&&nx.length>80)return true;
+    return false;
+  };
+  const headings=[];const used=new Set();
+  for(let i=0;i<lines.length;i++){
+    if(isHead(lines[i],lines[i+1])){
+      const k=lines[i].toLowerCase();
+      if(!used.has(k)){used.add(k);headings.push({title:lines[i],li:i});}
+    }
+  }
+  let chs=[];
+  if(headings.length>=2){
+    for(let i=0;i<Math.min(headings.length,12);i++){
+      const start=headings[i].li+1;
+      const end=headings[i+1]?headings[i+1].li:lines.length;
+      const content=lines.slice(start,end).filter(l=>l.length>0).join('\n').trim();
+      if(content.length<80)continue;
+      chs.push({id:'ch'+chs.length,num:chs.length+1,title:cleanTitle(headings[i].title),content:fmtContent(content)});
+    }
+  }
+  if(chs.length<2){
+    const paras=text.split(/\n{2,}/).map(p=>p.trim()).filter(p=>p.length>120);
+    const cs=Math.max(3,Math.floor(paras.length/5));
+    for(let i=0;i<paras.length&&chs.length<7;i+=cs){
+      const sl2=paras.slice(i,i+cs).join('\n\n');
+      const fl=paras[i].split(/[.!?]/)[0].slice(0,80);
+      chs.push({id:'ch'+chs.length,num:chs.length+1,title:fl||'Section '+(chs.length+1),content:fmtContent(sl2)});
+    }
+  }
+  return chs.length?chs:[{id:'ch0',num:1,title:'Full Document',content:fmtContent(text.slice(0,8000))}];
+}
+function cleanTitle(t){return t.replace(/^(chapter|section|part)\s+[\dIVXLCDM]+[\.\:]\s*/i,'').replace(/^\d+[\.\)]\s+/,'').trim()||t.trim()}
+function fmtContent(raw){
+  return raw.split(/\n{2,}|\n(?=[A-Z])/).map(p=>p.replace(/\n/g,' ').replace(/\s+/g,' ').trim()).filter(p=>p.length>20);
+}
+
+/* ── SUMMARY ── */
+function buildSummary(text,chapters){
+  const sents=text.replace(/\n+/g,' ').match(/[^.!?]+[.!?]+/g)||[];
+  const words=text.toLowerCase().split(/\s+/);
+  const freq={};
+  words.forEach(w=>{w=w.replace(/[^a-z]/g,'');if(w.length>4)freq[w]=(freq[w]||0)+1});
+  const scored=sents.map(s=>({s,sc:s.toLowerCase().split(/\s+/).reduce((a,w)=>a+(freq[w.replace(/[^a-z]/g,'')]||0),0)/s.length}));
+  scored.sort((a,b)=>b.sc-a.sc);
+  const top=scored.slice(0,3).map(x=>x.s.trim()).join(' ');
+  const kps=scored.slice(0,8).map(x=>x.s.trim()).filter(s=>s.length>40&&s.length<200).slice(0,6);
+  const themes=extractThemes(text);
+  return{
+    overview:top,keyPoints:kps,themes,
+    chSums:chapters.map(ch=>({title:ch.title,sum:sumCh(ch.content)}))
+  };
+}
+function sumCh(paras){
+  if(!paras||!paras.length)return'Chapter content.';
+  const sents=(paras.join(' ')).match(/[^.!?]+[.!?]+/g)||[paras.join(' ')];
+  return sents.slice(0,2).join(' ').trim().slice(0,260);
+}
+function extractThemes(text){
+  const stop=new Set(['the','and','for','are','but','not','you','all','can','had','her','was','one','our','out','day','get','has','him','his','how','its','let','may','now','own','see','too','use','way','who','any','been','from','have','here','into','just','like','make','more','most','much','only','same','some','such','than','that','them','then','they','this','time','very','were','what','when','will','with','also','come','even','find','give','good','great','help','high','kind','know','last','life','long','look','many','mean','need','over','part','said','take','tell','well','work','year']);
+  const wf={};
+  text.toLowerCase().replace(/[^a-z\s]/g,' ').split(/\s+/).forEach(w=>{if(w.length>5&&!stop.has(w))wf[w]=(wf[w]||0)+1});
+  return Object.entries(wf).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([w])=>w.charAt(0).toUpperCase()+w.slice(1));
+}
+
+/* ── RENDER ── */
+function renderBook(b){
+  document.getElementById('rTitle').textContent=b.title;
+  document.getElementById('bTitle').textContent=b.title;
+  document.getElementById('bMeta').innerHTML=`<span>${b.pages} pages</span><div class="msep"></div><span>${b.words.toLocaleString()} words</span><div class="msep"></div><span>${b.chapters.length} chapters</span><div class="msep"></div><span>~${b.readTime} min read</span>`;
+  const toc=document.getElementById('tocEl');toc.innerHTML='';
+  b.chapters.forEach((ch,i)=>{
+    const btn=document.createElement('button');btn.className='tocbtn'+(i===0?' on':'');
+    btn.textContent=ch.title;
+    btn.onclick=()=>{document.getElementById(ch.id)?.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.tocbtn').forEach(t=>t.classList.remove('on'));btn.classList.add('on')};
+    toc.appendChild(btn);
+  });
+  const el=document.getElementById('chsEl');el.innerHTML='';
+  b.chapters.forEach((ch,i)=>{
+    const d=document.createElement('div');d.className='ch';d.id=ch.id;
+    const paras=Array.isArray(ch.content)?ch.content:[ch.content];
+    d.innerHTML=`<div class="chnum">Chapter ${ch.num}</div><h2 class="chtitle">${esc(ch.title)}</h2><div class="chbody">${paras.map(p=>'<p>'+esc(p)+'</p>').join('')}</div>${i<b.chapters.length-1?'<div class="chdiv">✦ &nbsp; ✦ &nbsp; ✦</div>':''}`;
+    el.appendChild(d);
+  });
+  buildSum(b.summary);
+  showView('reader');
+  refreshBm();
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function buildSum(s){
+  if(!s)return;
+  document.getElementById('sumCont').innerHTML=`
+    <div class="sumsec"><div class="sumlabel">Overview</div><div class="sumbody">${s.overview||'—'}</div></div>
+    <div class="sumsec"><div class="sumlabel">Key Topics</div>${(s.themes||[]).map(t=>'<div class="kp">'+t+'</div>').join('')}</div>
+    <div class="sumsec"><div class="sumlabel">Key Insights</div>${(s.keyPoints||[]).map(k=>'<div class="kp">'+esc(k)+'</div>').join('')}</div>
+    <div class="sumsec"><div class="sumlabel">Chapter Summaries</div>${(s.chSums||[]).map(c=>`<div style="margin-bottom:20px"><div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:8px">${esc(c.title)}</div><div class="sumbody" style="font-size:13px">${esc(c.sum)}</div></div>`).join('')}</div>
+  `;
+}
+
+/* ── DEMO ── */
+function showDemo(){
+  const d={title:'The Philosophy of Solitude',pages:142,words:5200,readTime:22,
+    chapters:[
+      {id:'ch0',num:1,title:'On Being Alone',content:['Solitude has long been misunderstood. In an age of relentless connectivity, where every silence is filled with notification and every moment of stillness met with anxiety, to choose aloneness is considered eccentric at best, deeply troubled at worst.','Yet the great thinkers of every era have recognised what modern psychology is only now confirming — that the capacity to be alone, truly alone with oneself, is not merely pleasant but essential. It is the crucible in which character is formed, in which the noise of other people\'s expectations fades long enough to hear what we ourselves actually think and want.','The philosopher Blaise Pascal observed that all of humanity\'s problems stem from the inability to sit quietly in a room alone. He was not advocating misanthropy. He was noting that we are strangers to ourselves — and that this estrangement costs us dearly. Without solitude, we outsource our thinking to the crowd, our values to convention, our lives to the expectations of others.','There is a profound difference between loneliness and solitude. Loneliness is the pain of unwanted aloneness — the sense of being excluded, unseen, disconnected. Solitude is the joy of chosen aloneness — the sense of returning to oneself, of quieting the external world to better hear the internal one. The same physical circumstance, a person sitting alone in a room, can be either experience depending on whether it is chosen or imposed.']},
+      {id:'ch1',num:2,title:'The Architecture of Inner Life',content:['To cultivate an inner life is to build a home within oneself — a space of refuge that cannot be taken away by circumstance, that exists independent of external validation, that neither poverty nor illness nor loss of status can fully destroy.','The Stoics understood this with particular clarity. Marcus Aurelius, emperor of Rome, with all the world\'s noise pressing upon him, retreated daily into what he called the inner citadel — the space of his own reasoning, untouched by the chaos outside. His Meditations, written for no audience but himself, are the record of a man building and maintaining that interior architecture.','What does this architecture consist of? It is assembled from attention — the disciplined practice of noticing one\'s own thoughts without being wholly consumed by them. From memory — the ability to return to formative experiences and draw wisdom from their patterns. From imagination — the capacity to inhabit other perspectives, other possibilities, other versions of one\'s own life.','Modern life conspires against this construction. Every device in our pocket is engineered, by teams of brilliant people, to prevent precisely this kind of inner attention. The attention economy profits from distraction. Solitude is the enemy of engagement metrics. And so we find ourselves architecturally homeless — rich in connection and poor in depth, surrounded by people and estranged from ourselves.']},
+      {id:'ch2',num:3,title:'Solitude as Resistance',content:['To choose solitude in the contemporary world is an act of quiet but genuine resistance. It is to insist, against enormous economic and social pressure, that not every moment need be productive, shareable, or optimised. That some experiences have value precisely because they are not witnessed.','The deepest human bonds are formed not by people who have lost themselves in each other, but by people who have found themselves in solitude and can now meet each other whole. Rilke understood this when he wrote of love as two solitudes that protect and border and greet each other.','The capacity for solitude and the capacity for deep connection are not opposites but complements. The person who cannot bear to be alone will grasp at connection desperately, turning it into dependency rather than love. The person who has befriended their own aloneness can enter into relationships from strength rather than from fear.','What solitude ultimately teaches, if we sit with it long enough, is that we are sufficient. Not perfect — but sufficient in the sense of being, in ourselves, a source of meaning and experience and value. This sufficiency is the ground on which a good life is built. Without it, we remain perpetually seeking, perpetually dependent, perpetually afraid of the silence.']}
+    ],
+    summary:{overview:'This text explores the distinction between loneliness and chosen solitude, arguing that the capacity to be alone is essential for authentic selfhood, deep connection, and resistance to the attention economy.',themes:['Solitude','Inner life','Attention','Philosophy','Connection','Resistance'],keyPoints:['Loneliness is unwanted aloneness; solitude is chosen — the same circumstance, entirely different experiences.','Pascal argued all human misery stems from our inability to sit quietly alone with ourselves.','The Stoics built an inner citadel — a space of inner life immune to external circumstance.','The attention economy is architecturally opposed to the cultivation of an inner life.','Those who can bear their own aloneness meet others from strength rather than need.'],chSums:[{title:'On Being Alone',sum:'Introduces the distinction between loneliness and solitude, arguing that the capacity for aloneness is misunderstood and undervalued in modern life.'},{title:'The Architecture of Inner Life',sum:'Draws on the Stoics to explore how an interior life is built from attention, memory, and imagination — and how modern technology conspires against it.'},{title:'Solitude as Resistance',sum:'Frames the choice of solitude as a political and ethical act, and argues it is the foundation of genuine human connection rather than its opposite.'}]}
+  };
+  renderBook(d);
+}
+
+/* ── SCROLL ── */
+function onScroll(){
+  const el=document.getElementById('rMain');
+  const p=el.scrollHeight-el.clientHeight>0?(el.scrollTop/(el.scrollHeight-el.clientHeight))*100:0;
+  document.getElementById('rpbar').style.width=p+'%';
+  document.querySelectorAll('.ch').forEach((ch,i)=>{
+    const r=ch.getBoundingClientRect();
+    if(r.top<=130&&r.bottom>=130)document.querySelectorAll('.tocbtn').forEach((b,j)=>b.classList.toggle('on',i===j));
+  });
+}
+
+/* ── CONTROLS ── */
+function toggleSidebar(){
+  const sb=document.getElementById('rSb');
+  if(window.innerWidth<=768)sb.classList.toggle('mshow');
+  else{sbOpen=!sbOpen;sb.classList.toggle('hide',!sbOpen)}
+}
+function toggleSummary(){sumOpen=!sumOpen;document.getElementById('sumDr').classList.toggle('open',sumOpen);document.getElementById('sumBtn').classList.toggle('lit',sumOpen)}
+function toggleFocus(){
+  focMode=!focMode;
+  const sb=document.getElementById('rSb'),fc=document.getElementById('fCtrl'),rp=document.getElementById('rpbar');
+  if(focMode){sb.classList.add('hide');fc.style.opacity='0';rp.style.opacity='0';toast('Focus mode · Press F to exit')}
+  else{if(sbOpen)sb.classList.remove('hide');fc.style.opacity='1';rp.style.opacity='1'}
+  document.getElementById('focBtn').classList.toggle('lit',focMode);
+}
+function adjFont(d){fontSize=Math.max(14,Math.min(30,fontSize+d));document.documentElement.style.setProperty('--reading-size',fontSize+'px');document.getElementById('fLbl').textContent=fontSize+'px'}
+function toggleBookmark(){
+  if(!book)return;
+  const k=book.title,sc=document.getElementById('rMain').scrollTop;
+  const idx=bookmarks.findIndex(b=>b.k===k);
+  if(idx>=0){bookmarks.splice(idx,1);document.getElementById('bmBtn').classList.remove('lit');toast('Bookmark removed')}
+  else{bookmarks.push({k,sc,d:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})});document.getElementById('bmBtn').classList.add('lit');toast('Bookmarked ✦')}
+  localStorage.setItem('lr_bm',JSON.stringify(bookmarks));refreshBm();
+}
+function refreshBm(){
+  const c=document.getElementById('bmEl');
+  const bms=bookmarks.filter(b=>b.k===(book?.title||''));
+  if(!bms.length){c.innerHTML='<div style="font-size:12px;color:var(--muted2);font-style:italic;padding:4px 0">None saved yet</div>';document.getElementById('bmBtn').classList.remove('lit');return}
+  c.innerHTML=bms.map(b=>`<button class="tocbtn" onclick="document.getElementById('rMain').scrollTop=${b.sc}">${b.d} — saved position</button>`).join('');
+  document.getElementById('bmBtn').classList.add('lit');
+}
+function toggleTheme(){dark=!dark;document.documentElement.toggleAttribute('data-light',!dark)}
+function goHome(){showView('landing');toast('Welcome back')}
+function showView(v){
+  document.getElementById('landing').style.display=v==='landing'?'flex':'none';
+  if(v==='landing')document.getElementById('landing').style.flexDirection='column';
+  document.getElementById('processing').style.display=v==='processing'?'flex':'none';
+  document.getElementById('reader').style.display=v==='reader'?'flex':'none';
+  if(v==='reader')document.getElementById('reader').style.flexDirection='column';
+}
+let tTmr;
+function toast(msg){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('in');clearTimeout(tTmr);tTmr=setTimeout(()=>e.classList.remove('in'),2800)}
+function sl(ms){return new Promise(r=>setTimeout(r,ms))}
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('reader').style.display!=='none'){
+    if(e.key==='f')toggleFocus();
+    if(e.key==='b')toggleBookmark();
+    if(e.key==='s')toggleSummary();
+    if(e.key==='Escape'){if(focMode)toggleFocus();if(sumOpen)toggleSummary()}
+    if(e.key==='+'||e.key==='=')adjFont(1);
+    if(e.key==='-')adjFont(-1);
+  }
+});
+</script>
+</body>
+</html>
